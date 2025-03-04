@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>剪贴板状态监控</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      margin-top: 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .status-card {
+      background-color: #f9f9f9;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .status-item {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+    .status-label {
+      font-weight: bold;
+      width: 150px;
+    }
+    .status-value {
+      flex: 1;
+    }
+    .status-active {
+      color: #28a745;
+    }
+    .status-inactive {
+      color: #dc3545;
+    }
+    .button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+      margin-right: 10px;
+    }
+    .button:hover {
+      background-color: #0069d9;
+    }
+    .button-group {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .log-container {
+      margin-top: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .log-entry {
+      font-family: monospace;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+    .refresh-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .auto-refresh {
+      display: flex;
+      align-items: center;
+    }
+    .auto-refresh input {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>剪贴板状态监控</h1>
+    
+    <div class="refresh-container">
+      <button id="refresh-btn" class="button">刷新状态</button>
+      <div class="auto-refresh">
+        <input type="checkbox" id="auto-refresh" checked>
+        <label for="auto-refresh">自动刷新 (5秒)</label>
+      </div>
+    </div>
+    
+    <div class="status-card">
+      <div class="status-item">
+        <div class="status-label">监控状态:</div>
+        <div class="status-value" id="monitoring-status">加载中...</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">失败计数:</div>
+        <div class="status-value" id="fail-count">加载中...</div>
+      </div>
+      <div class="status-item">
+        <div class="status-label">最近剪贴板内容:</div>
+        <div class="status-value" id="last-content">加载中...</div>
+      </div>
+    </div>
+    
+    <div class="button-group">
+      <button id="restart-btn" class="button">重启监控</button>
+      <button id="sync-db-btn" class="button">同步数据库</button>
+    </div>
+    
+    <div class="log-container" id="log-container">
+      <div class="log-entry">等待日志...</div>
+    </div>
+  </div>
+  
+  <script>
+    // 获取DOM元素
+    const monitoringStatusEl = document.getElementById('monitoring-status');
+    const failCountEl = document.getElementById('fail-count');
+    const lastContentEl = document.getElementById('last-content');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const syncDbBtn = document.getElementById('sync-db-btn');
+    const logContainerEl = document.getElementById('log-container');
+    const autoRefreshCheckbox = document.getElementById('auto-refresh');
+    
+    let autoRefreshInterval = null;
+    
+    // 添加日志
+    function addLog(message) {
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContainerEl.insertBefore(logEntry, logContainerEl.firstChild);
+      
+      // 限制日志条目数量
+      if (logContainerEl.children.length > 50) {
+        logContainerEl.removeChild(logContainerEl.lastChild);
+      }
+    }
+    
+    // 更新状态
+    function updateStatus(status) {
+      if (status.error) {
+        monitoringStatusEl.textContent = `错误: ${status.error}`;
+        monitoringStatusEl.className = 'status-value status-inactive';
+        addLog(`获取状态时出错: ${status.error}`);
+        return;
+      }
+      
+      monitoringStatusEl.textContent = status.isMonitoring ? '活跃' : '未活跃';
+      monitoringStatusEl.className = `status-value ${status.isMonitoring ? 'status-active' : 'status-inactive'}`;
+      
+      failCountEl.textContent = status.failCount;
+      lastContentEl.textContent = status.lastContent;
+      
+      addLog(`状态更新: 监控=${status.isMonitoring}, 失败计数=${status.failCount}`);
+    }
+    
+    // 获取监控状态
+    function getStatus() {
+      window.electronAPI.getMonitoringStatus();
+    }
+    
+    // 重启监控
+    function restartMonitoring() {
+      window.electronAPI.restartMonitoring();
+      addLog('请求重启监控...');
+    }
+    
+    // 同步数据库
+    function syncDatabase() {
+      window.electronAPI.syncDatabase();
+      addLog('请求同步数据库...');
+      syncDbBtn.disabled = true;
+      syncDbBtn.textContent = '同步中...';
+      setTimeout(() => {
+        syncDbBtn.disabled = false;
+        syncDbBtn.textContent = '同步数据库';
+      }, 3000);
+    }
+    
+    // 设置自动刷新
+    function setupAutoRefresh() {
+      if (autoRefreshCheckbox.checked) {
+        autoRefreshInterval = setInterval(getStatus, 5000);
+        addLog('自动刷新已启用 (5秒)');
+      } else {
+        clearInterval(autoRefreshInterval);
+        addLog('自动刷新已禁用');
+      }
+    }
+    
+    // 事件监听器
+    refreshBtn.addEventListener('click', getStatus);
+    restartBtn.addEventListener('click', restartMonitoring);
+    syncDbBtn.addEventListener('click', syncDatabase);
+    autoRefreshCheckbox.addEventListener('change', setupAutoRefresh);
+    
+    // 接收监控状态
+    window.electronAPI.onMonitoringStatus((status) => {
+      updateStatus(status);
+    });
+    
+    // 接收数据库同步结果
+    window.electronAPI.onDatabaseSyncResult((result) => {
+      if (result.success) {
+        addLog('数据库同步成功');
+      } else {
+        addLog(`数据库同步失败: ${result.error || '未知错误'}`);
+      }
+    });
+    
+    // 初始化
+    getStatus();
+    setupAutoRefresh();
+    addLog('状态监控页面已加载');
+  </script>
+</body>
+</html> 

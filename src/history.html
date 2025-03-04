@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Clipboard History</title>
+  <link rel="stylesheet" href="history.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="header">
+      <h1>Clipboard History</h1>
+      <div class="search-container">
+        <input type="text" id="search-input" placeholder="Search clipboard history..." />
+      </div>
+    </div>
+    <div class="clipboard-list" id="clipboard-list">
+      <!-- Clipboard items will be inserted here -->
+    </div>
+    <div class="footer">
+      <div class="shortcuts">
+        <span>↑/↓: Navigate</span>
+        <span>Enter: Select</span>
+        <span>Esc: Close</span>
+      </div>
+    </div>
+  </div>
+  <script src="history.js"></script>
+</body>
+</html> 
