@@ -18,15 +18,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "active-win": "^9.0.0",
     "canvas": "^3.1.0",
-    "electron-builder": "^25.1.8",
     "electron-squirrel-startup": "^1.0.1",
     "node-global-key-listener": "^0.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
